@@ -46,25 +46,27 @@ def mediapipe_algo(res,img):
     angle = np.degrees(angle) 
     data = np.array([angle], dtype=np.float32)
     # ------------------------------------------------
-    if(res.landmark[mp.hands.HandLandmark.WRIST].x < res.landmark[mp.hands.HandLandmark.INDEX_FINGER_MCP].x):
-        if(res.landmark[mp.hands.HandLandmark.WRIST].y > res.landmark[mp.hands.HandLandmark.INDEX_FINGER_MCP].y):
+    if(res.landmark[mp_hands.HandLandmark.WRIST].x < res.landmark[mp_hands.HandLandmark.INDEX_FINGER_MCP].x):
+        if(res.landmark[mp_hands.HandLandmark.WRIST].y > res.landmark[mp_hands.HandLandmark.INDEX_FINGER_MCP].y):
             falm_state = 1 # to 12'
-    if(res.landmark[mp.hands.HandLandmark.WRIST].x > res.landmark[mp.hands.HandLandmark.INDEX_FINGER_MCP].x):
-        if(res.landmark[mp.hands.HandLandmark.WRIST].y > res.landmark[mp.hands.HandLandmark.INDEX_FINGER_MCP].y):
+    if(res.landmark[mp_hands.HandLandmark.WRIST].x > res.landmark[mp_hands.HandLandmark.INDEX_FINGER_MCP].x):
+        if(res.landmark[mp_hands.HandLandmark.WRIST].y > res.landmark[mp_hands.HandLandmark.INDEX_FINGER_MCP].y):
             falm_state = 2 # to 9'
-    if(res.landmark[mp.hands.HandLandmark.WRIST].x > res.landmark[mp.hands.HandLandmark.INDEX_FINGER_MCP].x):
-        if(res.landmark[mp.hands.HandLandmark.WRIST].y < res.landmark[mp.hands.HandLandmark.INDEX_FINGER_MCP].y):
+    if(res.landmark[mp_hands.HandLandmark.WRIST].x > res.landmark[mp_hands.HandLandmark.INDEX_FINGER_MCP].x):
+        if(res.landmark[mp_hands.HandLandmark.WRIST].y < res.landmark[mp_hands.HandLandmark.INDEX_FINGER_MCP].y):
             falm_state = 3 # to 6'
-    if(res.landmark[mp.hands.HandLandmark.WRIST].x < res.landmark[mp.hands.HandLandmark.INDEX_FINGER_MCP].x):
-        if(res.landmark[mp.hands.HandLandmark.WRIST].y < res.landmark[mp.hands.HandLandmark.INDEX_FINGER_MCP].y):
+    if(res.landmark[mp_hands.HandLandmark.WRIST].x < res.landmark[mp_hands.HandLandmark.INDEX_FINGER_MCP].x):
+        if(res.landmark[mp_hands.HandLandmark.WRIST].y < res.landmark[mp_hands.HandLandmark.INDEX_FINGER_MCP].y):
             falm_state = 4 # t 3' --> actually NONE
 
-    data = np.append(data, falm_state*10) # @@@@ falm_state's weight 10
+    angle = np.append(angle,falm_state*10) # falm_sate's weight 10
+    #data = np.append(data, falm_state*10) # @@@@ 
+    data = np.array([angle], dtype = np.float32)
     #---------------------------------------------------------
     ret, results, neighbours, dist = knn.findNearest(data, 5)
     idx = int(results[0][0])
 
-    korean_dict = {0:"ㄱ", 1:"ㄴ",2:"권승찬바보", 3:"ㄷ" , 4: "ㄹ", 5:"ㅁ",6:"ㅂ", 7:"ㅅ", 8:"ㅇ", 9:"ㅈ",10:"ㅊ",
+    korean_dict = {0:"ㄱ", 1:"ㄴ",2:"ㄷ", 3:"ㄹ" , 4: "ㅁ", 5:"END",6:"ㅂ", 7:"ㅅ", 8:"ㅇ", 9:"ㅈ",10:"ㅊ",
             11:"ㅌ",12:"ㅍ", 13: "ㅎ", 14 : "end",
             15: "ㅏ", 16: "ㅑ", 17:"ㅓ", 18: "ㅕ", 19:"ㅗ", 20:"ㅛ", 21: "ㅜ", 22: " ㅠ",
             23: "ㅡ", 24: "ㅣ"}
@@ -100,7 +102,7 @@ def ensemble(mp_result, cnn_result):
 
 words_queue = []
 for i in range(10):
-    words_queue.append("empty")
+    words_queue.append("NULL")
 
 final_list = []
 cap = cv2.VideoCapture(0)
@@ -123,20 +125,24 @@ while cap.isOpened():
             mp_result = mediapipe_algo(res,img)
             cnn_result = cnn_algo(img)
             final_result = ensemble(mp_result, cnn_result)
-            final_result = "test"
+            final_result = mp_result
             words_queue.pop(0)  
             words_queue.append(final_result)
             # NOTE ===> if detected_hand_N == 2 : --> save "now" label to final_list and pass
-            if(detected_hand_N ==2)
+            if(detected_hand_N >1):
                  # --------------------------------------------------------------------
                  # FIXME--> maybe make final_list by using words_queue based on new rule
                  #      --> ex) continuous "3" same data based on "queue"
                  #      --> NOTE solved by "find max counted value"
-                for word in words_queue:
-                    final_list.append(max(set(words_queue, key=words_queue.count)))
+                #for word in words_queue:
+                    #final_list.append(max(set(words_queue, key=words_queue.count))) 
+                M = max(words_queue, key = words_queue.count)
+                if M != "NULL":
+                    final_list.append(M)
+                print("final list : ", final_list)
                 words_queue.clear()
                 for i in range(10):
-                    words_queue.append("empty")
+                    words_queue.append("NULL")
                 #time.sleep(1) #FIXME timer....???
                 # ===> pass next step smoothly
                 # ===> minimize queue size
@@ -153,7 +159,7 @@ while cap.isOpened():
                 # FIXME ==> update please .......use final_list
                 # ----------------------------------------------------------------
                 final_length = len(final_list)
-                print("time to end")
+                print("time to end .... run AI-SPEAKER")
                 break
     cv2.imshow('SSLACK', img)
     if cv2.waitKey(1) == ord('q'):
