@@ -98,10 +98,11 @@ def ensemble(mp_result, cnn_result):
 # --------------------------------------------------------------------------------------
 
 
-final_words_queue = []
+words_queue = []
 for i in range(10):
-    final_words_queue.append("empty")
+    words_queue.append("empty")
 
+final_list = []
 cap = cv2.VideoCapture(0)
 
 # main 
@@ -117,25 +118,28 @@ while cap.isOpened():
 
     # based on mediapipe's logic flow
     if result.multi_hand_landmarks is not None:
+        detected_hand_N = len(result.multi_hand_landmarks)
         for res in result.multi_hand_landmarks:
             mp_result = mediapipe_algo(res,img)
             cnn_result = cnn_algo(img)
             final_result = ensemble(mp_result, cnn_result)
             final_result = "test"
-            # --------------------------------------------------------------------
-            # FIXME--> maybe make real_queue(or list) by using final_words_queue based on new rule
-            #      --> ex) continuous "3" same data based on "queue"
-            # NOTE --> should decide between "real_queue" or "timer"  
-            final_words_queue.pop(0)  # pop first data
-            final_words_queue.append(mp_result) # append "final_result" data
-
-            # NOTE ===> if detected hand's num == 2 : --> save "now" label to real_queue and pass
-            if(max_num_hands ==2): # not max_num_hands ....
-                pass
-                #final_words_queue.clear()
-                #time.sleep(1) 
-                # NOTE ===> pass next step smoothly
-                #      ===> minimizae queue size
+            words_queue.pop(0)  
+            words_queue.append(final_result)
+            # NOTE ===> if detected_hand_N == 2 : --> save "now" label to final_list and pass
+            if(detected_hand_N ==2)
+                 # --------------------------------------------------------------------
+                 # FIXME--> maybe make final_list by using words_queue based on new rule
+                 #      --> ex) continuous "3" same data based on "queue"
+                 #      --> NOTE solved by "find max counted value"
+                for word in words_queue:
+                    final_list.append(max(set(words_queue, key=words_queue.count)))
+                words_queue.clear()
+                for i in range(10):
+                    words_queue.append("empty")
+                #time.sleep(1) #FIXME timer....???
+                # ===> pass next step smoothly
+                # ===> minimize queue size
             # --------------------------------------------------------------------
             if(mp_result == "END"):
                 # ----------------------------------------------------------------
@@ -146,8 +150,9 @@ while cap.isOpened():
                 #             -----> to allow for AI_speaker to detect SSLACK_message 
                 #          4. run AI_speaker
                 # ---------------------------------------------------------------
-                # FIXME ==> update please .......
+                # FIXME ==> update please .......use final_list
                 # ----------------------------------------------------------------
+                final_length = len(final_list)
                 print("time to end")
                 break
     cv2.imshow('SSLACK', img)
