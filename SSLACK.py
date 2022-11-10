@@ -128,8 +128,11 @@ while cap.isOpened():
         handN_queue.append(detected_hand_N)
         for res in result.multi_hand_landmarks:
             mp_result = mediapipe_algo(res,img)
-            cnn_result = cnn_algo(img)
-            final_result = ensemble(mp_result, cnn_result)
+            final_result = mp_result
+            if(mp_result == "된소리" or "ㅅ"): #TODO ==> append extra vslabels
+                cnn_result = cnn_algo(img)
+                final_result = cnn_result
+            #final_result = ensemble(mp_result, cnn_result)
             final_result = mp_result
             words_queue.pop(0)  
             words_queue.append(final_result)
@@ -160,7 +163,7 @@ while cap.isOpened():
                 # ===> pass next step smoothly
                 # ===> minimize queue size
             # --------------------------------------------------------------------
-            if(mp_result == "END"):
+                if(M == "END"):
                 # ----------------------------------------------------------------
                 # when "end motion" detected ....
                 # TODO ==> 1. convert final_word_queue to final_sentence 
@@ -172,10 +175,10 @@ while cap.isOpened():
                 # FIXME ==> update please .......use final_list
                 # ----------------------------------------------------------------
                 #final_length = len(final_list)
-                print("time to end .... run AI-SPEAKER")
-                print("final list is : ", final_list)
-                #time.sleep(10)
-                exit(1)
+                    print("time to end .... run AI-SPEAKER")
+                    print("final list is : ", final_list)
+                    #time.sleep(10)
+                    exit(1)
             if(len(final_list) > final_L):
                 print("final_list : ",final_list)
 
