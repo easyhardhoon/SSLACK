@@ -9,8 +9,8 @@ mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
 hands = mp_hands.Hands(
         max_num_hands=max_num_hands,
-        min_detection_confidence=0.5,
-        min_tracking_confidence=0.5)
+        min_detection_confidence=0.7,
+        min_tracking_confidence=0.7)
 
 #file = np.genfromtxt('data/train.csv', delimiter=',') # ---> demo csv [train.csv]
 file = np.genfromtxt('data/train_final.csv', delimiter=',')  # ---> updated csv [train_new.csv]
@@ -104,6 +104,12 @@ for i in range(10):
 final_list = []
 cap = cv2.VideoCapture(0)
 
+handN_queue = []
+for i in range(4):
+    handN_queue.append(1)
+
+BOUNDARY = 6
+
 # main 
 while cap.isOpened():
     ret, img = cap.read()
@@ -114,10 +120,12 @@ while cap.isOpened():
 
     result = hands.process(img)
     img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-
+    final_L = len(final_list)
     # based on mediapipe's logic flow
     if result.multi_hand_landmarks is not None:
         detected_hand_N = len(result.multi_hand_landmarks)
+        handN_queue.pop(0)
+        handN_queue.append(detected_hand_N)
         for res in result.multi_hand_landmarks:
             mp_result = mediapipe_algo(res,img)
             cnn_result = cnn_algo(img)
@@ -126,7 +134,11 @@ while cap.isOpened():
             words_queue.pop(0)  
             words_queue.append(final_result)
             # NOTE ===> if detected_hand_N == 2 : --> save "now" label to final_list and pass
-            if(detected_hand_N >1):
+            handN_sum = 0
+            for N in handN_queue:
+                handN_sum += N
+            if(handN_sum >= BOUNDARY):
+            #if(detected_hand_N >1):
                  # --------------------------------------------------------------------
                  # FIXME--> maybe make final_list by using words_queue based on new rule
                  #      --> ex) continuous "3" same data based on "queue"
@@ -136,10 +148,14 @@ while cap.isOpened():
                 M = max(words_queue, key = words_queue.count)
                 if M != "NULL":
                     final_list.append(M)
-                print("final list : ", final_list)
+                #print("final list : ", final_list) @@
                 words_queue.clear()
                 for i in range(10):
                     words_queue.append("NULL")
+                handN_queue.clear()
+                for i in range(4):
+                    handN_queue.append(1)
+                handN_sum = 0
                 #time.sleep(1) #FIXME timer....???
                 # ===> pass next step smoothly
                 # ===> minimize queue size
@@ -155,9 +171,14 @@ while cap.isOpened():
                 # ---------------------------------------------------------------
                 # FIXME ==> update please .......use final_list
                 # ----------------------------------------------------------------
-                final_length = len(final_list)
+                #final_length = len(final_list)
                 print("time to end .... run AI-SPEAKER")
-                break
+                print("final list is : ", final_list)
+                #time.sleep(10)
+                exit(1)
+            if(len(final_list) > final_L):
+                print("final_list : ",final_list)
+
     cv2.imshow('SSLACK', img)
     if cv2.waitKey(1) == ord('q'):
         break
