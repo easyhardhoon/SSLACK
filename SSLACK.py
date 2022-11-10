@@ -12,8 +12,7 @@ hands = mp_hands.Hands(
         min_detection_confidence=0.7,
         min_tracking_confidence=0.7)
 
-#file = np.genfromtxt('data/train.csv', delimiter=',') # ---> demo csv [train.csv]
-file = np.genfromtxt('data/train_final.csv', delimiter=',')  # ---> updated csv [train_new.csv]
+file = np.genfromtxt('data/train_final.csv', delimiter=',') 
 # [15],[1] ==> [15,1],[1]
 
 angle = file[:,:-1].astype(np.float32)
@@ -57,10 +56,9 @@ def mediapipe_algo(res,img):
             falm_state = 3 # to 6'
     if(res.landmark[mp_hands.HandLandmark.WRIST].x < res.landmark[mp_hands.HandLandmark.INDEX_FINGER_MCP].x):
         if(res.landmark[mp_hands.HandLandmark.WRIST].y < res.landmark[mp_hands.HandLandmark.INDEX_FINGER_MCP].y):
-            falm_state = 4 # t 3' --> actually NONE
+            falm_state = 4 # t 3' 
 
-    angle = np.append(angle,falm_state*10) # falm_sate's weight 10
-    #data = np.append(data, falm_state*10) # @@@@ 
+    angle = np.append(angle,falm_state*20) # falm_sate's weight 10
     data = np.array([angle], dtype = np.float32)
     #---------------------------------------------------------
     ret, results, neighbours, dist = knn.findNearest(data, 5)
@@ -82,6 +80,7 @@ def cnn_algo(img):
     #TODO : make cnn_algo
     #     -->  run cnn_based model
     #     -->  return cnn_result
+    #NOTE : make 4~5 models ... per detect incorrect labels from mediapipe's result
     # -------------------------------------
     return cnn_result
 
@@ -90,8 +89,7 @@ def ensemble(mp_result, cnn_result):
     # -------------------------------------
     #TODO : make ensemble code
     #     --> how to rate two's
-    #     --> use "accuracy" or "queue" .....
-    #NOTE : maybe use queue
+    #NOTE : just vote. between mediapipe & CNN ---> maybe 8:2 versus
     # -------------------------------------
     return final_result
 # --------------------------------------------------------------------------------------
@@ -110,7 +108,10 @@ for i in range(4):
 
 BOUNDARY = 6
 
-# main 
+# NOTE TODO labels should be detected by CNN 
+borderless_label = ["된소리", "ㅅ", "ㅠ", "ㅔ", "ㅖ", "ㄱ", "ㅜ", "ㅈ"]
+
+# main
 while cap.isOpened():
     ret, img = cap.read()
     if not ret:
@@ -129,29 +130,22 @@ while cap.isOpened():
         for res in result.multi_hand_landmarks:
             mp_result = mediapipe_algo(res,img)
             final_result = mp_result
-            if(mp_result == "된소리" or "ㅅ"): #TODO ==> append extra vslabels
+            # ---------------------------------------------------------
+            # NOTE only run CNN & ensemble when mp_result is in borderless_label
+            if(mp_result in borderless_label):
                 cnn_result = cnn_algo(img)
-                final_result = cnn_result
-            #final_result = ensemble(mp_result, cnn_result)
-            final_result = mp_result
-            words_queue.pop(0)  
+                final_result = ensemble(mp_result, cnn_result)
+            # ---------------------------------------------------------
+            final_result = mp_result #just for test til CNN completed
+            words_queue.pop(0) 
             words_queue.append(final_result)
-            # NOTE ===> if detected_hand_N == 2 : --> save "now" label to final_list and pass
             handN_sum = 0
             for N in handN_queue:
                 handN_sum += N
             if(handN_sum >= BOUNDARY):
-            #if(detected_hand_N >1):
-                 # --------------------------------------------------------------------
-                 # FIXME--> maybe make final_list by using words_queue based on new rule
-                 #      --> ex) continuous "3" same data based on "queue"
-                 #      --> NOTE solved by "find max counted value"
-                #for word in words_queue:
-                    #final_list.append(max(set(words_queue, key=words_queue.count))) 
                 M = max(words_queue, key = words_queue.count)
                 if M != "NULL":
                     final_list.append(M)
-                #print("final list : ", final_list) @@
                 words_queue.clear()
                 for i in range(10):
                     words_queue.append("NULL")
@@ -159,29 +153,21 @@ while cap.isOpened():
                 for i in range(4):
                     handN_queue.append(1)
                 handN_sum = 0
-                #time.sleep(1) #FIXME timer....???
-                # ===> pass next step smoothly
-                # ===> minimize queue size
-            # --------------------------------------------------------------------
-                if(M == "END"):
-                # ----------------------------------------------------------------
-                # when "end motion" detected ....
-                # TODO ==> 1. convert final_word_queue to final_sentence 
-                #          2. make exact final_sentence by using etc) method
-                #          3. return SSLACK_message 
-                #             -----> to allow for AI_speaker to detect SSLACK_message 
-                #          4. run AI_speaker
+            final_detector = max(words_queue, key = words_queue.count)
+            if(final_detector == "END"):
                 # ---------------------------------------------------------------
-                # FIXME ==> update please .......use final_list
+                # FIXME ==> update sentence & AI_SPEAKER code. use final_list
                 # ----------------------------------------------------------------
-                #final_length = len(final_list)
-                    print("time to end .... run AI-SPEAKER")
-                    print("final list is : ", final_list)
-                    #time.sleep(10)
-                    exit(1)
+                print("time to end .... run AI-SPEAKER")
+                print("final list is : ", final_list)
+                #time.sleep(10)
+                exit(1)
             if(len(final_list) > final_L):
                 print("final_list : ",final_list)
 
     cv2.imshow('SSLACK', img)
+    # --------------------------------------------
+    # FIXME ==> print GUI sentence in Img
+    # -------------------------------------------
     if cv2.waitKey(1) == ord('q'):
         break
