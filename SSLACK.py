@@ -13,7 +13,7 @@ hands = mp_hands.Hands(
         min_tracking_confidence=0.5)
 
 #file = np.genfromtxt('data/train.csv', delimiter=',') # ---> demo csv [train.csv]
-file = np.genfromtxt('data/train_new.csv', delimiter=',')  # ---> updated csv [train_new.csv]
+file = np.genfromtxt('data/train_final.csv', delimiter=',')  # ---> updated csv [train_new.csv]
 # [15],[1] ==> [15,1],[1]
 
 angle = file[:,:-1].astype(np.float32)
@@ -66,11 +66,8 @@ def mediapipe_algo(res,img):
     ret, results, neighbours, dist = knn.findNearest(data, 5)
     idx = int(results[0][0])
 
-    korean_dict = {0:"ㄱ", 1:"ㄴ",2:"ㄷ", 3:"ㄹ" , 4: "ㅁ", 5:"END",6:"ㅂ", 7:"ㅅ", 8:"ㅇ", 9:"ㅈ",10:"ㅊ",
-            11:"ㅌ",12:"ㅍ", 13: "ㅎ", 14 : "end",
-            15: "ㅏ", 16: "ㅑ", 17:"ㅓ", 18: "ㅕ", 19:"ㅗ", 20:"ㅛ", 21: "ㅜ", 22: " ㅠ",
-            23: "ㅡ", 24: "ㅣ"}
-    if(0<= idx <=24) : 
+    korean_dict = {0:"ㄱ", 1:"ㄴ",2:"ㄷ", 3:"ㄹ" , 4: "ㅁ", 5:"ㅂ",6:"ㅅ", 7:"ㅇ", 8:"ㅈ", 9:"ㅊ",10:"ㅋ",11:"ㅌ",12:"ㅍ", 13: "ㅎ", 14 : "된소리",15: "ㅏ", 16: "ㅑ", 17:"ㅓ", 18: "ㅕ", 19:"ㅗ", 20:"ㅛ", 21: "ㅜ", 22: " ㅠ",23: "ㅡ", 24: "ㅣ", 25:"ㅐ", 26:"ㅔ", 27:"ㅚ",28:"ㅟ",29:"ㅒ", 30:"ㅖ",31:"ㅢ",32:"END"}
+    if(0<= idx <=32) : 
         print(korean_dict[idx])
         mp_result = korean_dict[idx]
     else:
