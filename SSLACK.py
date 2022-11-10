@@ -4,7 +4,7 @@ import numpy as np
 
 # mediapipe_algo setup code
 
-max_num_hands = 1
+max_num_hands = 2
 mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
 hands = mp_hands.Hands(
@@ -55,12 +55,12 @@ def mediapipe_algo(res,img):
     data = np.array([angle], dtype=np.float32)
     ret, results, neighbours, dist = knn.findNearest(data, 5)
     idx = int(results[0][0])
-    
-    korean_dict = {0:"ㄱ", 1:"ㄴ", 3:"ㄷ" , 4: "ㄹ", 5:"ㅁ",6:"ㅂ", 7:"ㅅ", 8:"ㅇ", 9:"ㅈ",10:"ㅊ",
-                   11:"ㅌ",12:"ㅍ", 13: "ㅎ", 14 : "end",
-                   15: "ㅏ", 16: "ㅑ", 17:"ㅓ", 18: "ㅕ", 19:"ㅗ", 20:"ㅛ", 21: "ㅜ", 22: " ㅠ",
-                   23: "ㅡ", 24: "ㅣ"}
-    if(idx>=0 and idx <=24) : 
+
+    korean_dict = {0:"ㄱ", 1:"ㄴ",2:"권승찬바보", 3:"ㄷ" , 4: "ㄹ", 5:"ㅁ",6:"ㅂ", 7:"ㅅ", 8:"ㅇ", 9:"ㅈ",10:"ㅊ",
+            11:"ㅌ",12:"ㅍ", 13: "ㅎ", 14 : "end",
+            15: "ㅏ", 16: "ㅑ", 17:"ㅓ", 18: "ㅕ", 19:"ㅗ", 20:"ㅛ", 21: "ㅜ", 22: " ㅠ",
+            23: "ㅡ", 24: "ㅣ"}
+    if(0<= idx <=24) : 
         print(korean_dict[idx])
         mp_result = korean_dict[idx]
     else:
@@ -89,9 +89,10 @@ def ensemble(mp_result, cnn_result):
     return final_result
 # --------------------------------------------------------------------------------------
 
+
 final_words_queue = []
 for i in range(10):
-    final_words_queue.append("NULL")
+    final_words_queue.append("empty")
 
 cap = cv2.VideoCapture(0)
 
@@ -116,9 +117,17 @@ while cap.isOpened():
             # --------------------------------------------------------------------
             # FIXME--> maybe make real_queue(or list) by using final_words_queue based on new rule
             #      --> ex) continuous "3" same data based on "queue"
-            # NOTE --> should decide between "real_queue" or "timer" 
+            # NOTE --> should decide between "real_queue" or "timer"  
             final_words_queue.pop(0)  # pop first data
             final_words_queue.append(mp_result) # append "final_result" data
+
+            # NOTE ===> if detected hand's num == 2 : --> save "now" label to real_queue and pass
+            if(max_num_hands ==2): # not max_num_hands ....
+                pass
+                #final_words_queue.clear()
+                #time.sleep(1) 
+                # NOTE ===> pass next step smoothly
+                #      ===> minimizae queue size
             # --------------------------------------------------------------------
             if(mp_result == "END"):
                 # ----------------------------------------------------------------
