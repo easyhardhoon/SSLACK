@@ -12,17 +12,9 @@ hands = mp_hands.Hands(
         min_detection_confidence=0.5,
         min_tracking_confidence=0.5)
 
-file = np.genfromtxt('data/train.csv', delimiter=',') # ---> demo csv [train.csv]
-#file = np.genfromtxt('data/train_new.csv', delimiter=',')  # ---> updated csv [train_new.csv]
-# ---------------------
-# NOTE
-# what's new ---> updated "palm state" which is used as "extra" parameter
-# [15], [1] --> [15,1],[1]
-# palm_1st, palm_2nd, palm_3rd, palm_4th 
-# use hand_landmarks.landmark[mp.hands.HandLandmark.WRIST].x, .y
-#     hand_landmarks.landmark[mp.hands.HandLandmark.INDEX_FINGER_MCP].x , .y
-# 
-# ---------------------
+#file = np.genfromtxt('data/train.csv', delimiter=',') # ---> demo csv [train.csv]
+file = np.genfromtxt('data/train_new.csv', delimiter=',')  # ---> updated csv [train_new.csv]
+# [15],[1] ==> [15,1],[1]
 
 angle = file[:,:-1].astype(np.float32)
 label = file[:, -1].astype(np.float32)
@@ -38,21 +30,37 @@ knn.train(angle, cv2.ml.ROW_SAMPLE, label)
 
 def mediapipe_algo(res,img):
     mp_result = None
-    joint = np.zeros((21, 3)) #1~20 landmark * (x,y,z) pixel
+    joint = np.zeros((21, 3)) 
     for j, lm in enumerate(res.landmark):
         joint[j] = [lm.x, lm.y, lm.z]
 
-    v1 = joint[[0,1,2,3,0,5,6,7,0,9,10,11,0,13,14,15,0,17,18,19],:] # Parent joint
-    v2 = joint[[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],:] # Child joint
-    v = v2 - v1 # [20,3]
+    v1 = joint[[0,1,2,3,0,5,6,7,0,9,10,11,0,13,14,15,0,17,18,19],:] 
+    v2 = joint[[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],:] 
+    v = v2 - v1 
     v = v / np.linalg.norm(v, axis=1)[:, np.newaxis]
 
     angle = np.arccos(np.einsum('nt,nt->n',
         v[[0,1,2,4,5,6,8,9,10,12,13,14,16,17,18],:], 
-        v[[1,2,3,5,6,7,9,10,11,13,14,15,17,18,19],:])) # [15,]
+        v[[1,2,3,5,6,7,9,10,11,13,14,15,17,18,19],:])) 
 
-    angle = np.degrees(angle) # Convert radian to degree
+    angle = np.degrees(angle) 
     data = np.array([angle], dtype=np.float32)
+    # ------------------------------------------------
+    if(res.landmark[mp.hands.HandLandmark.WRIST].x < res.landmark[mp.hands.HandLandmark.INDEX_FINGER_MCP].x):
+        if(res.landmark[mp.hands.HandLandmark.WRIST].y > res.landmark[mp.hands.HandLandmark.INDEX_FINGER_MCP].y):
+            falm_state = 1 # to 12'
+    if(res.landmark[mp.hands.HandLandmark.WRIST].x > res.landmark[mp.hands.HandLandmark.INDEX_FINGER_MCP].x):
+        if(res.landmark[mp.hands.HandLandmark.WRIST].y > res.landmark[mp.hands.HandLandmark.INDEX_FINGER_MCP].y):
+            falm_state = 2 # to 9'
+    if(res.landmark[mp.hands.HandLandmark.WRIST].x > res.landmark[mp.hands.HandLandmark.INDEX_FINGER_MCP].x):
+        if(res.landmark[mp.hands.HandLandmark.WRIST].y < res.landmark[mp.hands.HandLandmark.INDEX_FINGER_MCP].y):
+            falm_state = 3 # to 6'
+    if(res.landmark[mp.hands.HandLandmark.WRIST].x < res.landmark[mp.hands.HandLandmark.INDEX_FINGER_MCP].x):
+        if(res.landmark[mp.hands.HandLandmark.WRIST].y < res.landmark[mp.hands.HandLandmark.INDEX_FINGER_MCP].y):
+            falm_state = 4 # t 3' --> actually NONE
+
+    data = np.append(data, falm_state*10) # @@@@ falm_state's weight 10
+    #---------------------------------------------------------
     ret, results, neighbours, dist = knn.findNearest(data, 5)
     idx = int(results[0][0])
 
