@@ -1,7 +1,11 @@
 import cv2
 import mediapipe as mp
 import numpy as np
-
+from tensorflow.keras.models import load_model
+from tensorflow.keras.applications.resnet50 import preprocess_input
+from tensorflow.keras.preprocessing.image import img_to_array
+from PIL import ImageFont, ImageDraw, Image
+import random
 # mediapipe_algo setup code
 
 max_num_hands = 2
@@ -75,22 +79,39 @@ def mediapipe_algo(res,img):
     return mp_result
 
 def cnn_algo(img):
-    cnn_result = None
-    # -------------------------------------
-    #TODO : make cnn_algo
-    #     -->  run cnn_based model
-    #     -->  return cnn_result
     #NOTE : make 4~5 models ... per detect incorrect labels from mediapipe's result
-    # -------------------------------------
+    cnn_result = None
+    model = load_model('my_model_mnist') #TEST
+    #model.summary()
+    status , frame = cap.read()
+    #print("........", status, frame)
+    img= cv2.resize(frame, (28,28), interpolation = cv2.INTER_AREA)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    input_data = img_to_array(img)
+    input_data = np.expand_dims(input_data, axis=0)
+    #input_data = preprocess_input(input_data)
+    prediction = model.predict(input_data)
+    predicted_class = np.argmax(prediction[0])
+    #print(prediction[0])
+    #print(predicted_class)
+    if predicted_class == 0:
+        cnn_result = "ㅅ"
+    elif predicted_class ==1:
+        cnn_result = "된소리"
+    elif predicted_class ==2:
+        cnn_result = "ㅠ"
+    else:
+        cnn_result = "ERROR"
+    #print("CNN_result", cnn_result)
     return cnn_result
 
 def ensemble(mp_result, cnn_result):
-    final_result = None
-    # -------------------------------------
-    #TODO : make ensemble code
-    #     --> how to rate two's
     #NOTE : just vote. between mediapipe & CNN ---> maybe 8:2 versus
-    # -------------------------------------
+    cnn_result = mp_result #NOTE just for debugging
+    final_result = None
+    mp_weight = 30
+    cnn_weight = 70
+    final_result = random.choices([mp_result, cnn_result], [mp_weight, cnn_weight])
     return final_result
 # --------------------------------------------------------------------------------------
 
