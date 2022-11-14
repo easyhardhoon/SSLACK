@@ -65,7 +65,7 @@ def mediapipe_algo(res,img):
     angle = np.append(angle,falm_state*30) # falm_sate's weight 10
     data = np.array([angle], dtype = np.float32)
     #---------------------------------------------------------
-    ret, results, neighbours, dist = knn.findNearest(data, 5)
+    ret, results, neighbours, dist = knn.findNearest(data, 50)
     idx = int(results[0][0])
 
     korean_dict = {0:"ㄱ", 1:"ㄴ",2:"ㄷ", 3:"ㄹ" , 4: "ㅁ", 5:"ㅂ",6:"ㅅ", 7:"ㅇ", 8:"ㅈ", 9:"ㅊ",10:"ㅋ",11:"ㅌ",12:"ㅍ", 13: "ㅎ", 14 : "된소리",15: "ㅏ", 16: "ㅑ", 17:"ㅓ", 18: "ㅕ", 19:"ㅗ", 20:"ㅛ", 21: "ㅜ", 22: " ㅠ",23: "ㅡ", 24: "ㅣ", 25:"ㅐ", 26:"ㅔ", 27:"ㅚ",28:"ㅟ",29:"ㅒ", 30:"ㅖ",31:"ㅢ",32:"END",33:"DEL"}
@@ -79,7 +79,6 @@ def mediapipe_algo(res,img):
     return mp_result
 
 def cnn_algo(img):
-    #NOTE : make 4~5 models ... per detect incorrect labels from mediapipe's result
     cnn_result = None
     model = load_model('my_model_mnist') #TEST
     #model.summary()
@@ -124,14 +123,14 @@ final_list = []
 cap = cv2.VideoCapture(0)
 
 handN_queue = []
-for i in range(4):
-    handN_queue.append(1)
+for i in range(5):
+    handN_queue.append(0)
 
-BOUNDARY = 6
+BOUNDARY = 10
 
 # NOTE TODO labels should be detected by CNN 
-borderless_label = ["된소리", "ㅅ", "ㅠ", "ㅔ", "ㅖ", "ㄱ", "ㅜ", "ㅈ"]
-#borderless_label = ["debugging"]
+#borderless_label = ["된소리", "ㅅ", "ㅠ"]
+borderless_label = ["debugging"]
 #main
 while cap.isOpened():
     ret, img = cap.read()
@@ -173,8 +172,8 @@ while cap.isOpened():
                 for i in range(10):
                     words_queue.append("NULL")
                 handN_queue.clear()
-                for i in range(4):
-                    handN_queue.append(1)
+                for i in range(5):
+                    handN_queue.append(0)
                 handN_sum = 0
             specific_detector = max(words_queue, key = words_queue.count)
             if(specific_detector == "END"):
@@ -182,7 +181,7 @@ while cap.isOpened():
                 # FIXME ==> update sentence & AI_SPEAKER code. use final_list
                 # ----------------------------------------------------------------
                 print("time to end .... run AI-SPEAKER")
-                print("final list is : ", final_list)
+                #print("final list is : ", final_list)
                 #time.sleep(10)
                 exit(1)
             if(len(final_list) != final_L):
