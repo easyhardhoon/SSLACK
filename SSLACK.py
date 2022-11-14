@@ -16,7 +16,7 @@ hands = mp_hands.Hands(
         min_detection_confidence=0.7,
         min_tracking_confidence=0.7)
 
-file = np.genfromtxt('data/train_final.csv', delimiter=',') 
+file = np.genfromtxt('data/SSLACK.csv', delimiter=',') 
 # [15],[1] ==> [15,1],[1]
 
 angle = file[:,:-1].astype(np.float32)
@@ -62,14 +62,14 @@ def mediapipe_algo(res,img):
         if(res.landmark[mp_hands.HandLandmark.WRIST].y < res.landmark[mp_hands.HandLandmark.INDEX_FINGER_MCP].y):
             falm_state = 4 # t 3' 
 
-    angle = np.append(angle,falm_state*20) # falm_sate's weight 10
+    angle = np.append(angle,falm_state*30) # falm_sate's weight 10
     data = np.array([angle], dtype = np.float32)
     #---------------------------------------------------------
-    ret, results, neighbours, dist = knn.findNearest(data, 5)
+    ret, results, neighbours, dist = knn.findNearest(data, 50)
     idx = int(results[0][0])
 
-    korean_dict = {0:"ㄱ", 1:"ㄴ",2:"ㄷ", 3:"ㄹ" , 4: "ㅁ", 5:"ㅂ",6:"ㅅ", 7:"ㅇ", 8:"ㅈ", 9:"ㅊ",10:"ㅋ",11:"ㅌ",12:"ㅍ", 13: "ㅎ", 14 : "된소리",15: "ㅏ", 16: "ㅑ", 17:"ㅓ", 18: "ㅕ", 19:"ㅗ", 20:"ㅛ", 21: "ㅜ", 22: " ㅠ",23: "ㅡ", 24: "ㅣ", 25:"ㅐ", 26:"ㅔ", 27:"ㅚ",28:"ㅟ",29:"ㅒ", 30:"ㅖ",31:"ㅢ",32:"END"}
-    if(0<= idx <=32) : 
+    korean_dict = {0:"ㄱ", 1:"ㄴ",2:"ㄷ", 3:"ㄹ" , 4: "ㅁ", 5:"ㅂ",6:"ㅅ", 7:"ㅇ", 8:"ㅈ", 9:"ㅊ",10:"ㅋ",11:"ㅌ",12:"ㅍ", 13: "ㅎ", 14 : "된소리",15: "ㅏ", 16: "ㅑ", 17:"ㅓ", 18: "ㅕ", 19:"ㅗ", 20:"ㅛ", 21: "ㅜ", 22: " ㅠ",23: "ㅡ", 24: "ㅣ", 25:"ㅐ", 26:"ㅔ", 27:"ㅚ",28:"ㅟ",29:"ㅒ", 30:"ㅖ",31:"ㅢ",32:"END",33:"DEL"}
+    if(0<= idx <=33) : 
         print(korean_dict[idx])
         mp_result = korean_dict[idx]
     else:
@@ -79,7 +79,6 @@ def mediapipe_algo(res,img):
     return mp_result
 
 def cnn_algo(img):
-    #NOTE : make 4~5 models ... per detect incorrect labels from mediapipe's result
     cnn_result = None
     model = load_model('my_model_mnist') #TEST
     #model.summary()
@@ -113,8 +112,8 @@ def ensemble(mp_result, cnn_result):
     cnn_weight = 70
     final_result = random.choices([mp_result, cnn_result], [mp_weight, cnn_weight])
     return final_result
-# --------------------------------------------------------------------------------------
 
+# --------------------------------------------------------------------------------------
 
 words_queue = []
 for i in range(10):
@@ -124,15 +123,15 @@ final_list = []
 cap = cv2.VideoCapture(0)
 
 handN_queue = []
-for i in range(4):
-    handN_queue.append(1)
+for i in range(5):
+    handN_queue.append(0)
 
-BOUNDARY = 6
+BOUNDARY = 10
 
 # NOTE TODO labels should be detected by CNN 
-borderless_label = ["된소리", "ㅅ", "ㅠ", "ㅔ", "ㅖ", "ㄱ", "ㅜ", "ㅈ"]
-
-# main
+#borderless_label = ["된소리", "ㅅ", "ㅠ"]
+borderless_label = ["debugging"]
+#main
 while cap.isOpened():
     ret, img = cap.read()
     if not ret:
@@ -165,25 +164,27 @@ while cap.isOpened():
                 handN_sum += N
             if(handN_sum >= BOUNDARY):
                 M = max(words_queue, key = words_queue.count)
-                if M != "NULL":
+                if M == "DEL":
+                    final_list.pop()
+                if M != "NULL" and M != "DEL":
                     final_list.append(M)
                 words_queue.clear()
                 for i in range(10):
                     words_queue.append("NULL")
                 handN_queue.clear()
-                for i in range(4):
-                    handN_queue.append(1)
+                for i in range(5):
+                    handN_queue.append(0)
                 handN_sum = 0
-            final_detector = max(words_queue, key = words_queue.count)
-            if(final_detector == "END"):
+            specific_detector = max(words_queue, key = words_queue.count)
+            if(specific_detector == "END"):
                 # ---------------------------------------------------------------
                 # FIXME ==> update sentence & AI_SPEAKER code. use final_list
                 # ----------------------------------------------------------------
                 print("time to end .... run AI-SPEAKER")
-                print("final list is : ", final_list)
+                #print("final list is : ", final_list)
                 #time.sleep(10)
                 exit(1)
-            if(len(final_list) > final_L):
+            if(len(final_list) != final_L):
                 print("final_list : ",final_list)
 
     cv2.imshow('SSLACK', img)
