@@ -31,6 +31,7 @@ class Phoneme_korean:
     
     def merge_phoneme(self):
         '''음소 조합 메소드'''
+        #['ㄱ', 'ㅏ', 'ㅇ', 'ㅅ', 'ㅡ', 'ㅇ', 'ㅁ', 'ㅣ', 'ㄴ']
         self.phoneme_queue = self.convert_dot(self.phoneme_queue)
         while(1):
             target = self.phoneme_queue.popleft()
@@ -53,28 +54,37 @@ class Phoneme_korean:
                         break
                     
                     elif self.__phoneme_count == 2:
-                        if len(self.phoneme_queue) == 1:
-                            temp = target + "+" + self.phoneme_queue.popleft()
-                            self.__unicode_sum += self.phoneme[2].index(Phoneme_korean.exception[temp])
-                            self.__sentence_list.append(chr(self.__unicode_sum))
-                            self.__initial_unicode_sum()
-                            self.__initial_phoneme_count()
-                            break
-
-                        elif self.phoneme_queue[1] in self.phoneme[0]:
-                            temp = target + "+" + self.phoneme_queue.popleft()
-                            self.__unicode_sum += self.phoneme[2].index(Phoneme_korean.exception[temp])
-                            self.__sentence_list.append(chr(self.__unicode_sum))
-                            self.__initial_unicode_sum()
-                            self.__initial_phoneme_count()
-                            break
-
-                        else:
+                        if len(self.phoneme_queue) == 0:
+                            #마지막에 종성 한개만 올 경우
                             self.__unicode_sum += i
                             self.__sentence_list.append(chr(self.__unicode_sum))
                             self.__initial_unicode_sum()
                             self.__initial_phoneme_count()
                             break
+                        
+                        elif len(self.phoneme_queue) == 1:
+                            #마지막에 종성 두개가 올 경우 ex) ㄱ + ㅅ
+                            temp = target + "+" + self.phoneme_queue.popleft()
+                            self.__unicode_sum += self.phoneme[2].index(Phoneme_korean.exception[temp])
+                            self.__sentence_list.append(chr(self.__unicode_sum))
+                            self.__initial_unicode_sum()
+                            self.__initial_phoneme_count()
+                            break
+                            
+                        else:
+                            if self.phoneme_queue[1] in self.phoneme[1]:
+                                self.__unicode_sum += i
+                                self.__sentence_list.append(chr(self.__unicode_sum))
+                                self.__initial_unicode_sum()
+                                self.__initial_phoneme_count()
+                                break
+                            elif self.phoneme_queue[1] in self.phoneme[0]:
+                                temp = target + "+" + self.phoneme_queue.popleft()
+                                self.__unicode_sum += self.phoneme[2].index(Phoneme_korean.exception[temp])
+                                self.__sentence_list.append(chr(self.__unicode_sum))
+                                self.__initial_unicode_sum()
+                                self.__initial_phoneme_count()
+                                break
 
             if len(self.phoneme_queue) == 0:
                 if self.__phoneme_count != 0:
