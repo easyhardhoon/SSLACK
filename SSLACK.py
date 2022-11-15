@@ -1,14 +1,13 @@
 import cv2
 import mediapipe as mp
 import numpy as np
-from tensorflow import keras
-import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.keras.applications.resnet50 import preprocess_input
 from tensorflow.keras.preprocessing.image import img_to_array
 from PIL import ImageFont, ImageDraw, Image
-
 import random
+import phoneme_korean_v1 as p_k
+
 # mediapipe_algo setup code
 
 max_num_hands = 2
@@ -19,8 +18,7 @@ hands = mp_hands.Hands(
         min_detection_confidence=0.7,
         min_tracking_confidence=0.7)
 
-
-file = np.genfromtxt("C:/Users/user/aiproject/final_Lee/SSLACK/SSLACK.csv", delimiter=',') 
+file = np.genfromtxt("C:/Users/user/aiproject/final_Lee/SSLACK/SSLACK.csv", delimiter=',')
 # [15],[1] ==> [15,1],[1]
 
 angle = file[:,:-1].astype(np.float32)
@@ -84,7 +82,7 @@ def mediapipe_algo(res,img):
 
 def cnn_algo(img):
     cnn_result = None
-    model = load_model("C:/Users/user/aiproject/final_Lee/SSLACK/cnn_model/SSLACK_CNN_model.h5") #TEST
+    model = load_model("C:/Users/user/aiproject/final_Lee/SSLACK/cnn_model/SSLACK_CNN_model.h5") 
     #model.summary()
     status , frame = cap.read()
     #print("........", status, frame)
@@ -109,7 +107,7 @@ def cnn_algo(img):
 
 def ensemble(mp_result, cnn_result):
     #NOTE : just vote. between mediapipe & CNN ---> maybe 8:2 versus
-    #cnn_result = mp_result #NOTE just for debugging
+    cnn_result = mp_result #NOTE just for debugging
     final_result = None
     mp_weight = 30
     cnn_weight = 70
@@ -134,6 +132,8 @@ BOUNDARY = 10
 # NOTE TODO labels should be detected by CNN 
 borderless_label = ["된소리", "ㅅ", "ㅠ"]
 #borderless_label = ["debugging"]
+
+break_point = True
 #main
 while cap.isOpened():
     ret, img = cap.read()
@@ -153,19 +153,15 @@ while cap.isOpened():
         for res in result.multi_hand_landmarks:
             mp_result = mediapipe_algo(res,img)
             final_result = mp_result
-            # ---------------------------------------------------------
-            # NOTE only run CNN & ensemble when mp_result is in borderless_label
             if(mp_result in borderless_label):
                 cnn_result = cnn_algo(img)
                 final_result = ensemble(mp_result, cnn_result)
-            # ---------------------------------------------------------
-            final_result = mp_result #just for test til CNN completed
             words_queue.pop(0) 
             words_queue.append(final_result)
             handN_sum = 0
             for N in handN_queue:
                 handN_sum += N
-            if(handN_sum >= BOUNDARY): #boundary 손 2개
+            if(handN_sum >= BOUNDARY):
                 M = max(words_queue, key = words_queue.count)
                 if M == "DEL":
                     final_list.pop()
@@ -186,13 +182,45 @@ while cap.isOpened():
                 print("time to end .... run AI-SPEAKER")
                 #print("final list is : ", final_list)
                 #time.sleep(10)
-                exit(1)
+                break_point = False
+                break
             if(len(final_list) != final_L):
                 print("final_list : ",final_list)
-
+    cv2.rectangle(img, (30, 350), (620,470), (255,255,255), -1)
+    x_coordinate = 40
+    y_coordinate = 350
+    if len(final_list) >= 1:
+        for i in final_list:
+            font = ImageFont.truetype("fonts/gulim.ttc", 20)
+            img = Image.fromarray(img)
+            draw = ImageDraw.Draw(img)
+            if x_coordinate >= 600:
+                x_coordinate = 40
+                y_coordinate += 50
+            draw.text((x_coordinate, y_coordinate), i ,font=font, fill=(0, 0, 0))
+            img = np.array(img)
+            x_coordinate += 40
     cv2.imshow('SSLACK', img)
     # --------------------------------------------
     # FIXME ==> print GUI sentence in Img
     # -------------------------------------------
-    if cv2.waitKey(1) == ord('q'):
+    if cv2.waitKey(1) == ord('q') or break_point == False:
+        cv2.destroyWindow('SSLACK')
         break
+
+ph = p_k.Phoneme_korean(final_list)
+ph.merge_phoneme()
+sentence_ph = ph.get_list()
+sentence_ph = "".join(sentence_ph)
+
+font = ImageFont.truetype("BMJUA_ttf.ttf", 20)
+img = np.full((200,300,3), (255,255,255), np.uint8)
+img = Image.fromarray(img)
+draw = ImageDraw.Draw(img)
+draw.text((100,70), sentence_ph ,font=font, fill=(0, 0, 0))
+img = np.array(img)
+cv2.namedWindow("background", cv2.WINDOW_NORMAL)
+cv2.resizeWindow(winname = "background", width=600, height=450)
+cv2.imshow("background", img)
+if cv2.waitKey(0) == ord('q'):
+    cv2.destroyAllWindows()
