@@ -1,10 +1,13 @@
 import cv2
 import mediapipe as mp
 import numpy as np
+from tensorflow import keras
+import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.keras.applications.resnet50 import preprocess_input
 from tensorflow.keras.preprocessing.image import img_to_array
 from PIL import ImageFont, ImageDraw, Image
+
 import random
 # mediapipe_algo setup code
 
@@ -16,7 +19,8 @@ hands = mp_hands.Hands(
         min_detection_confidence=0.7,
         min_tracking_confidence=0.7)
 
-file = np.genfromtxt('data/SSLACK.csv', delimiter=',') 
+
+file = np.genfromtxt("C:/Users/user/aiproject/final_Lee/SSLACK/SSLACK.csv", delimiter=',') 
 # [15],[1] ==> [15,1],[1]
 
 angle = file[:,:-1].astype(np.float32)
@@ -68,7 +72,7 @@ def mediapipe_algo(res,img):
     ret, results, neighbours, dist = knn.findNearest(data, 50)
     idx = int(results[0][0])
 
-    korean_dict = {0:"ㄱ", 1:"ㄴ",2:"ㄷ", 3:"ㄹ" , 4: "ㅁ", 5:"ㅂ",6:"ㅅ", 7:"ㅇ", 8:"ㅈ", 9:"ㅊ",10:"ㅋ",11:"ㅌ",12:"ㅍ", 13: "ㅎ", 14 : "된소리",15: "ㅏ", 16: "ㅑ", 17:"ㅓ", 18: "ㅕ", 19:"ㅗ", 20:"ㅛ", 21: "ㅜ", 22: " ㅠ",23: "ㅡ", 24: "ㅣ", 25:"ㅐ", 26:"ㅔ", 27:"ㅚ",28:"ㅟ",29:"ㅒ", 30:"ㅖ",31:"ㅢ",32:"END",33:"DEL"}
+    korean_dict = {0:"ㄱ", 1:"ㄴ",2:"ㄷ", 3:"ㄹ" , 4: "ㅁ", 5:"ㅂ",6:"ㅅ", 7:"ㅇ", 8:"ㅈ", 9:"ㅊ",10:"ㅋ",11:"ㅌ",12:"ㅍ", 13: "ㅎ", 14 : "된소리",15: "ㅏ", 16: "ㅑ", 17:"ㅓ", 18: "ㅕ", 19:"ㅗ", 20:"ㅛ", 21: "ㅜ", 22: "ㅠ",23: "ㅡ", 24: "ㅣ", 25:"ㅐ", 26:"ㅔ", 27:"ㅚ",28:"ㅟ",29:"ㅒ", 30:"ㅖ",31:"ㅢ",32:"END",33:"DEL"}
     if(0<= idx <=33) : 
         print(korean_dict[idx])
         mp_result = korean_dict[idx]
@@ -80,33 +84,32 @@ def mediapipe_algo(res,img):
 
 def cnn_algo(img):
     cnn_result = None
-    model = load_model('my_model_mnist') #TEST
+    model = load_model("C:/Users/user/aiproject/final_Lee/SSLACK/cnn_model/SSLACK_CNN_model.h5") #TEST
     #model.summary()
     status , frame = cap.read()
     #print("........", status, frame)
-    img= cv2.resize(frame, (28,28), interpolation = cv2.INTER_AREA)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    input_data = img_to_array(img)
-    input_data = np.expand_dims(input_data, axis=0)
+    img2 = img.copy()
+    img2 = cv2.resize(frame, (150,150), interpolation = cv2.INTER_AREA)
+    #img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    input_data = img_to_array(img2)
+    input_data = tf.expand_dims(input_data, 0)
+    #input_data = np.expand_dims(input_data, axis=0)
     #input_data = preprocess_input(input_data)
     prediction = model.predict(input_data)
+    score = tf.nn.softmax(prediction[0])
     predicted_class = np.argmax(prediction[0])
     #print(prediction[0])
-    #print(predicted_class)
-    if predicted_class == 0:
-        cnn_result = "ㅅ"
-    elif predicted_class ==1:
-        cnn_result = "된소리"
-    elif predicted_class ==2:
-        cnn_result = "ㅠ"
-    else:
-        cnn_result = "ERROR"
-    #print("CNN_result", cnn_result)
+    class_names=["ㅠ","된소리","ㅅ"]
+    print("...........", predicted_class)
+    print(
+    "This image most likely belongs to {} with a {:.2f} percent confidence."
+    .format(class_names[np.argmax(score)], 100 * np.max(score))
+)
     return cnn_result
 
 def ensemble(mp_result, cnn_result):
     #NOTE : just vote. between mediapipe & CNN ---> maybe 8:2 versus
-    cnn_result = mp_result #NOTE just for debugging
+    #cnn_result = mp_result #NOTE just for debugging
     final_result = None
     mp_weight = 30
     cnn_weight = 70
@@ -129,8 +132,8 @@ for i in range(5):
 BOUNDARY = 10
 
 # NOTE TODO labels should be detected by CNN 
-#borderless_label = ["된소리", "ㅅ", "ㅠ"]
-borderless_label = ["debugging"]
+borderless_label = ["된소리", "ㅅ", "ㅠ"]
+#borderless_label = ["debugging"]
 #main
 while cap.isOpened():
     ret, img = cap.read()
@@ -162,7 +165,7 @@ while cap.isOpened():
             handN_sum = 0
             for N in handN_queue:
                 handN_sum += N
-            if(handN_sum >= BOUNDARY):
+            if(handN_sum >= BOUNDARY): #boundary 손 2개
                 M = max(words_queue, key = words_queue.count)
                 if M == "DEL":
                     final_list.pop()
