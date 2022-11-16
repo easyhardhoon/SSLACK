@@ -1,14 +1,17 @@
 import cv2
 import mediapipe as mp
 import numpy as np
+from tensorflow import keras
+import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.keras.applications.resnet50 import preprocess_input
 from tensorflow.keras.preprocessing.image import img_to_array
 from PIL import ImageFont, ImageDraw, Image
-import random
-import phoneme_korean_v1 as p_k
+import asyncio
 
+import random
 # mediapipe_algo setup code
+model = load_model("C:/Users/user/aiproject/final_Lee/SSLACK/cnn_model/final_modelv3.h5") #TEST
 
 max_num_hands = 2
 mp_hands = mp.solutions.hands
@@ -18,7 +21,10 @@ hands = mp_hands.Hands(
         min_detection_confidence=0.7,
         min_tracking_confidence=0.7)
 
-file = np.genfromtxt('final_Lee/final_Lee/data/SSLACK.csv', delimiter=',') 
+borderless_label = ["ㅠ", ".", "ㅅ"]
+count = 0
+
+file = np.genfromtxt("C:/Users/user/aiproject/final_Lee/SSLACK/SSLACK.csv", delimiter=',') 
 # [15],[1] ==> [15,1],[1]
 
 angle = file[:,:-1].astype(np.float32)
@@ -46,9 +52,9 @@ def mediapipe_algo(res,img):
 
     angle = np.arccos(np.einsum('nt,nt->n',
         v[[0,1,2,4,5,6,8,9,10,12,13,14,16,17,18],:], 
-        v[[1,2,3,5,6,7,9,10,11,13,14,15,17,18,19],:]))
+        v[[1,2,3,5,6,7,9,10,11,13,14,15,17,18,19],:])) 
 
-    angle = np.degrees(angle)
+    angle = np.degrees(angle) 
     data = np.array([angle], dtype=np.float32)
     # ------------------------------------------------
     if(res.landmark[mp_hands.HandLandmark.WRIST].x < res.landmark[mp_hands.HandLandmark.INDEX_FINGER_MCP].x):
@@ -70,9 +76,9 @@ def mediapipe_algo(res,img):
     ret, results, neighbours, dist = knn.findNearest(data, 50)
     idx = int(results[0][0])
 
-    korean_dict = {0:"ㄱ", 1:"ㄴ",2:"ㄷ", 3:"ㄹ" , 4: "ㅁ", 5:"ㅂ",6:"ㅅ", 7:"ㅇ", 8:"ㅈ", 9:"ㅊ",10:"ㅋ",11:"ㅌ",12:"ㅍ", 13: "ㅎ", 14 : ".",15: "ㅏ", 16: "ㅑ", 17:"ㅓ", 18: "ㅕ", 19:"ㅗ", 20:"ㅛ", 21: "ㅜ", 22: " ㅠ",23: "ㅡ", 24: "ㅣ", 25:"ㅐ", 26:"ㅔ", 27:"ㅚ",28:"ㅟ",29:"ㅒ", 30:"ㅖ",31:"ㅢ",32:"DEL"}
+    korean_dict = {0:"ㄱ", 1:"ㄴ",2:"ㄷ", 3:"ㄹ" , 4: "ㅁ", 5:"ㅂ",6:"ㅅ", 7:"ㅇ", 8:"ㅈ", 9:"ㅊ",10:"ㅋ",11:"ㅌ",12:"ㅍ", 13: "ㅎ", 14 : ".", 15: "ㅏ", 16: "ㅑ", 17:"ㅓ", 18: "ㅕ", 19:"ㅗ", 20:"ㅛ", 21: "ㅜ", 22: "ㅠ",23: "ㅡ", 24: "ㅣ", 25:"ㅐ", 26:"ㅔ", 27:"ㅚ",28:"ㅟ",29:"ㅒ", 30:"ㅖ",31:"ㅢ",32:"DEL",33:"END"}
     if(0<= idx <=33) : 
-        print(korean_dict[idx])
+        print("mediapipe: ", korean_dict[idx])
         mp_result = korean_dict[idx]
     else:
         print("error")
@@ -80,34 +86,44 @@ def mediapipe_algo(res,img):
     mp_drawing.draw_landmarks(img, res, mp_hands.HAND_CONNECTIONS)
     return mp_result
 
-def cnn_algo(img):
+
+def cnn_algo(img, model):
     cnn_result = None
+    global count
     #model.summary()
-    status , frame = cap.read()
+    # status , frame = cap.read()
     #print("........", status, frame)
-    img= cv2.resize(frame, (28,28), interpolation = cv2.INTER_AREA)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # img2 = img.copy()
+    print(count)
+    count += 1
+    #cv2.imwrite("C:/Users/user/aiproject/test2/test_%d.png" % count, img)  # 저장할 경로와 이름
+    # img = keras.preprocessing.image.load_img(img, target_size=(150, 150))
+    #img = tf.keras.preprocessing.image.smart_resize(img, (150, 150), interpolation='bilinear')
+    image = cv2.resize(image,dsize=None,fx=150,fy=150)
+
+    # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     input_data = img_to_array(img)
-    input_data = np.expand_dims(input_data, axis=0)
+    
+    input_data = tf.expand_dims(input_data, 0)
+    #input_data = np.expand_dims(input_data, axis=0)
     #input_data = preprocess_input(input_data)
     prediction = model.predict(input_data)
+    # score = tf.nn.softmax(prediction[0])
     predicted_class = np.argmax(prediction[0])
-    print("correctness" + prediction[0])
-    print("correctness2" + predicted_class)
-    if predicted_class == 0:
-        cnn_result = "ㅅ"
-    elif predicted_class ==1:
-        cnn_result = "된소리"
-    elif predicted_class ==2:
-        cnn_result = "ㅠ"
-    else:
-        cnn_result = "ERROR"
-    #print("CNN_result", cnn_result)
+    #print("predicted_class: ", predicted_class)
+    print("prediction[0]: ",prediction[0])
+    #print("prediction: ", prediction)
+    
+    # print(score)
+    #print("...........", predicted_class)
+    print("This image most likely belongs to {}".format(borderless_label[predicted_class]))
+    
+    cnn_result = borderless_label[predicted_class]
     return cnn_result
 
 def ensemble(mp_result, cnn_result):
     #NOTE : just vote. between mediapipe & CNN ---> maybe 8:2 versus
-    cnn_result = mp_result #NOTE just for debugging
+    #cnn_result = mp_result #NOTE just for debugging
     final_result = None
     mp_weight = 30
     cnn_weight = 70
@@ -130,14 +146,11 @@ for i in range(5):
 BOUNDARY = 10
 
 # NOTE TODO labels should be detected by CNN 
-#borderless_label = ["된소리", "ㅅ", "ㅠ"]
-borderless_label = ["debugging"]
-
-break_point = True
+#borderless_label = ["debugging"]
 #main
-model = load_model('final_Lee/final_Lee/SSlack_v5/SSlack/SSLACK_CNN_model.h5') #TEST
 while cap.isOpened():
     ret, img = cap.read()
+    img_cnn = img.copy()
     if not ret:
         continue
     img = cv2.flip(img, 1)
@@ -157,7 +170,7 @@ while cap.isOpened():
             # ---------------------------------------------------------
             # NOTE only run CNN & ensemble when mp_result is in borderless_label
             if(mp_result in borderless_label):
-                cnn_result = cnn_algo(img)
+                cnn_result = cnn_algo(img_cnn, model)
                 final_result = ensemble(mp_result, cnn_result)
             # ---------------------------------------------------------
             final_result = mp_result #just for test til CNN completed
@@ -166,7 +179,7 @@ while cap.isOpened():
             handN_sum = 0
             for N in handN_queue:
                 handN_sum += N
-            if(handN_sum >= BOUNDARY):
+            if(handN_sum >= BOUNDARY): #boundary 손 2개
                 M = max(words_queue, key = words_queue.count)
                 if M == "DEL":
                     final_list.pop()
@@ -187,45 +200,13 @@ while cap.isOpened():
                 print("time to end .... run AI-SPEAKER")
                 #print("final list is : ", final_list)
                 #time.sleep(10)
-                break_point = False
-                break
+                exit(1)
             if(len(final_list) != final_L):
                 print("final_list : ",final_list)
-    cv2.rectangle(img, (30, 350), (620,470), (255,255,255), -1)
-    x_coordinate = 40
-    y_coordinate = 350
-    if len(final_list) >= 1:
-        for i in final_list:
-            font = ImageFont.truetype("fonts/gulim.ttc", 20)
-            img = Image.fromarray(img)
-            draw = ImageDraw.Draw(img)
-            if x_coordinate >= 600:
-                x_coordinate = 40
-                y_coordinate += 50
-            draw.text((x_coordinate, y_coordinate), i ,font=font, fill=(0, 0, 0))
-            img = np.array(img)
-            x_coordinate += 40
+
     cv2.imshow('SSLACK', img)
     # --------------------------------------------
     # FIXME ==> print GUI sentence in Img
     # -------------------------------------------
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        cv2.destroyWindow('SSLACK')
+    if cv2.waitKey(1) == ord('q'):
         break
-
-ph = p_k.Phoneme_korean(final_list)
-ph.merge_phoneme()
-sentence_ph = ph.get_list()
-sentence_ph = "".join(sentence_ph)
-print(sentence_ph)
-font = ImageFont.truetype("BMJUA_ttf.ttf", 20)
-img = np.full((200,300,3), (255,255,255), np.uint8)
-img = Image.fromarray(img)
-draw = ImageDraw.Draw(img)
-draw.text((100,70), sentence_ph ,font=font, fill=(0, 0, 0))
-img = np.array(img)
-cv2.namedWindow("background", cv2.WINDOW_NORMAL)
-cv2.resizeWindow(winname = "background", width=600, height=450)
-cv2.imshow("background", img)
-if cv2.waitKey(0) == ord('q'):
-    cv2.destroyAllWindows()

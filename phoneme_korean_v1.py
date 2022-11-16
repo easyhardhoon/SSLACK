@@ -6,6 +6,7 @@ from gtts import gTTS
 import os
 import time
 import playsound
+from py_hanspell.hanspell import spell_checker
 
 class Phoneme_korean:
     '''한글 전용 수어 클래스'''
@@ -19,7 +20,8 @@ class Phoneme_korean:
     exception = {"ㄱ+ㅅ":"ㄳ", "ㄴ+ㅈ":"ㄵ", "ㄴ+ㅎ":"ㄶ", "ㄹ+ㄱ":"ㄺ",
                  "ㄹ+ㅁ":"ㄻ", "ㄹ+ㅂ":"ㄼ", "ㄹ+ㅅ":"ㄽ", "ㄹ+ㅌ":"ㄾ",
                  "ㄹ+ㅍ":"ㄿ", "ㄹ+ㅎ":"ㅀ", "ㅂ+ㅅ":"ㅄ"}                  # 종성 이중 받침
-
+    after_spell_check = ""
+    
     def __init__(self, input_phoneme:list):
         '''음소 셋 리스트 생성 메소드'''
         self.phoneme = [Phoneme_korean.first, Phoneme_korean.second, Phoneme_korean.third]
@@ -132,27 +134,27 @@ class Phoneme_korean:
 
     def speak(self, text):
         #TTS 메소드
-        text = "".join(list)
-        print(text)
+        #text = "".join(list)
         tts = gTTS(text=text, lang="ko")
         filename='voice2.mp3'
         tts.save(filename)
         playsound.playsound(filename)
 
-    #def test(self):
-    #    self.merge_phoneme()
-    #    self.print_sentence()
-#
-    #    print("맞춤법 검사 전:", self)
-#
-    #    # 맞춤법 검사기
-    #    sentence = str(self)
-    #    spelled_sentence = spell_checker.check(sentence)
-    #    
-    #    print("맞춤법 검사 후:", spelled_sentence)
-    #    
-    #    # TTS
-    #    self.speak(spelled_sentence)
+    def test(self):
+        self.merge_phoneme()
+        self.print_sentence()
+
+        print("맞춤법 검사 전:", self)
+
+        # 맞춤법 검사기
+        sentence = str(self)
+        spelled_sentence = spell_checker.check(sentence)
+       
+        print("맞춤법 검사 후:", spelled_sentence)
+        Phoneme_korean.after_spell_check = spelled_sentence
+        # TTS
+        self.speak(spelled_sentence)
+         
 
     def __str__(self):
         '''문자열 출력 메소드'''
@@ -160,6 +162,10 @@ class Phoneme_korean:
         for i in self.__sentence_list:
             ret += i
         return ret
+
+    def get_str(self):
+        """맞춤법 검사 후 문자열 출력 메소드"""
+        return Phoneme_korean.after_spell_check
     
     def get_list(self):
         return self.__sentence_list
