@@ -204,6 +204,7 @@ while cap.isOpened():
             if(len(final_list) != final_L):
                 print("final_list : ",final_list)
 
+                
     cv2.imshow('SSLACK', img)
     # --------------------------------------------
     # FIXME ==> print GUI sentence in Img
